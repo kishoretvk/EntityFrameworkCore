@@ -1759,6 +1759,75 @@ FROM [Orders] AS [o0]
 ORDER BY [o0].[OrderID], [o0].[OrderDate]");
         }
 
+        public override void Count_after_GroupBy_aggregate()
+        {
+            base.Count_after_GroupBy_aggregate();
+
+            AssertSql(
+                @"SELECT COUNT(*)
+FROM (
+    SELECT SUM([o].[OrderID]) AS [c]
+    FROM [Orders] AS [o]
+    GROUP BY [o].[CustomerID]
+) AS [t]");
+        }
+
+        public override void LongCount_after_client_GroupBy()
+        {
+            base.LongCount_after_client_GroupBy();
+
+            AssertSql(
+                @"SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
+FROM [Orders] AS [o]
+ORDER BY [o].[CustomerID]");
+        }
+
+        public override void MinMax_after_GroupBy_aggregate()
+        {
+            base.MinMax_after_GroupBy_aggregate();
+
+            AssertSql(
+                @"SELECT MIN([t].[c])
+FROM (
+    SELECT SUM([o].[OrderID]) AS [c]
+    FROM [Orders] AS [o]
+    GROUP BY [o].[CustomerID]
+) AS [t]",
+                //
+                @"SELECT MAX([t].[c])
+FROM (
+    SELECT SUM([o].[OrderID]) AS [c]
+    FROM [Orders] AS [o]
+    GROUP BY [o].[CustomerID]
+) AS [t]");
+        }
+
+        public override void AllAny_after_GroupBy_aggregate()
+        {
+            base.AllAny_after_GroupBy_aggregate();
+
+            AssertSql(
+                @"SELECT CASE
+    WHEN NOT EXISTS (
+        SELECT 1
+        FROM (
+            SELECT SUM([o].[OrderID]) AS [c]
+            FROM [Orders] AS [o]
+            GROUP BY [o].[CustomerID]
+        ) AS [t]
+        WHERE 0 = 1)
+    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+END",
+                //
+                @"SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Orders] AS [o]
+        GROUP BY [o].[CustomerID])
+    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+END");
+        }
+
         private void AssertSql(params string[] expected)
             => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
 
